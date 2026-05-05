@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    font-family: "Trebuchet MS", "Gill Sans", sans-serif;
+    background:
+      radial-gradient(circle at top left, rgba(159, 122, 40, 0.2), transparent 30%),
+      radial-gradient(circle at top right, rgba(61, 107, 76, 0.28), transparent 28%),
+      linear-gradient(180deg, #181411 0%, #0d0f0d 100%);
+  }
+
+  body {
+    @apply min-h-screen bg-transparent text-stone-100 antialiased;
+  }
+
+  #__nuxt {
+    @apply min-h-screen;
+  }
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-3xl border border-white/10 bg-white/5 backdrop-blur-sm;
+  }
+
+  .surface-glow {
+    box-shadow: 0 22px 70px rgba(7, 10, 8, 0.32);
+  }
+}
