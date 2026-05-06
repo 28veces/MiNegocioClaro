@@ -29,7 +29,7 @@ const businessCards = computed(() => {
           <p class="text-xs uppercase tracking-[0.35em] text-leaf-300">Panorama</p>
           <h2 class="mt-3 text-3xl font-semibold text-stone-50">{{ authStore.roleLabel }}: {{ authStore.user?.name }}</h2>
           <p class="mt-3 max-w-3xl text-sm leading-7 text-stone-300">
-            Resumen consolidado de tus negocios, inversión comprometida y utilidad neta estimada con la operación cargada en local.
+            Resumen consolidado de los proyectos, inversión comprometida y utilidad neta estimada.
           </p>
         </div>
 
