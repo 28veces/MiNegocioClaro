@@ -696,6 +696,42 @@ class LocalBusinessAdapter implements BusinessRepository {
     }
 
     await database.put('businesses', business)
+
+    // Create initial partners if provided
+    if (input.initialPartners && input.initialPartners.length > 0) {
+      for (const partnerData of input.initialPartners) {
+        const person = await ensureSelectablePerson(database, partnerData.personId)
+        const businessPartners = await database.getAllFromIndex('partners', 'by-business', business.id)
+        const share = normalizePartnerShare(partnerData.share)
+
+        if (businessPartners.some((partner) => partner.personId === partnerData.personId)) {
+          throw new Error('Esta persona ya está asociada a este negocio.')
+        }
+
+        assertBusinessShareCapacity(businessPartners, share)
+
+        const partner: Partner = {
+          id: createId('partner'),
+          businessId: business.id,
+          personId: partnerData.personId,
+          userId: person.linkedUserId,
+          share,
+          contributionFocus: partnerData.contributionFocus,
+          createdAt: new Date().toISOString()
+        }
+
+        await database.put('partners', partner)
+        await createAuditEvent(database, {
+          entityType: 'partner',
+          entityId: partner.id,
+          businessId: partner.businessId,
+          action: 'created',
+          title: 'Socio asociado',
+          description: `${getPersonFullName(person)} quedó asociado a ${business.name} con ${share}% de participación.`
+        })
+      }
+    }
+
     return business
   }
 
