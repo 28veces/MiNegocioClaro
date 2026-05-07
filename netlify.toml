@@ -2,8 +2,8 @@
   # Build command
   command = "npm run build"
 
-  # Directory to publish (Nuxt static output)
-  publish = ".output/public"
+  # Directory to publish (Nuxt Netlify preset outputs to dist)
+  publish = "dist"
 
   # Environment variables for build
   [build.environment]

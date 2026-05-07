@@ -37,7 +37,7 @@ Esta guía explica cómo desplegar MiNegocioClaro a producción usando Netlify y
 Netlify detectará automáticamente la configuración desde `netlify.toml`, pero verifica:
 
 - **Build command**: `npm run build`
-- **Publish directory**: `.output/public`
+- **Publish directory**: `dist`
 - **Node version**: 18
 
 ### 3. Configurar Environment Variables
