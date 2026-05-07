@@ -7,7 +7,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
     public: {
-      dataMode: process.env.NUXT_PUBLIC_DATA_MODE ?? 'local',
+      dataMode: process.env.NUXT_PUBLIC_DATA_MODE ?? 'firebase',
       // Firebase configuration
       firebaseApiKey: process.env.NUXT_PUBLIC_FIREBASE_API_KEY,
       firebaseAuthDomain: process.env.NUXT_PUBLIC_FIREBASE_AUTH_DOMAIN,

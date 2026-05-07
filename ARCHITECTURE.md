@@ -73,7 +73,7 @@ La configuración determina qué adapter usar:
 ```typescript
 runtimeConfig: {
   public: {
-    dataMode: process.env.NUXT_PUBLIC_DATA_MODE ?? 'local' // 'local' | 'firebase'
+    dataMode: process.env.NUXT_PUBLIC_DATA_MODE ?? 'firebase' // 'local' | 'firebase'
   }
 }
 ```
