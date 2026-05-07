@@ -8,6 +8,8 @@ if (authStore.isAuthenticated) {
   await navigateTo('/')
 }
 
+const runtimeConfig = useRuntimeConfig()
+
 const form = reactive({
   email: 'admin@teamveces.local',
   password: 'demo123'
@@ -58,7 +60,7 @@ const useDemoAccount = (email: string) => {
         </div>
         <div class="rounded-3xl border border-white/10 bg-white/5 px-4 py-4">
           <p class="text-xs uppercase tracking-[0.25em] text-stone-400">Modo</p>
-          <p class="mt-3 text-2xl font-semibold text-leaf-300">Local</p>
+          <p class="mt-3 text-2xl font-semibold text-leaf-300">Firebase</p>
         </div>
       </div>
     </article>

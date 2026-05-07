@@ -1,5 +1,5 @@
 {
-  "name": "teamVeces",
+  "name": "minegocioclaro",
   "type": "module",
   "private": true,
   "scripts": {
@@ -7,10 +7,17 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "lint": "eslint . --ext .vue,.js,.ts",
+    "lint:fix": "eslint . --ext .vue,.js,.ts --fix",
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "typecheck": "nuxt typecheck"
   },
   "dependencies": {
     "chart.js": "^4.5.1",
+    "firebase": "^12.12.1",
     "idb": "^8.0.2",
     "nuxt": "3.17.7",
     "pinia": "^2.3.1",
@@ -18,8 +25,14 @@
   },
   "devDependencies": {
     "@pinia/nuxt": "^0.9.0",
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.0.0",
     "autoprefixer": "^10.4.20",
+    "eslint": "^8.0.0",
+    "eslint-plugin-vue": "^9.0.0",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
   }
 }

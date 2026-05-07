@@ -57,7 +57,7 @@ const partnerOptions = computed(() => {
 })
 
 const form = reactive({
-  type: 'expense' as const,
+  type: 'expense' as EntryType,
   category: '',
   amount: 0,
   note: '',

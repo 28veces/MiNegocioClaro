@@ -18,6 +18,10 @@ export const useRepositories = (): RepositoryBundle => {
   const runtimeConfig = useRuntimeConfig()
 
   if (runtimeConfig.public.dataMode === 'firebase') {
+    // Validate Firebase configuration is available
+    if (!runtimeConfig.public.firebaseProjectId) {
+      throw new Error('Firebase configuration missing. Please check your environment variables.')
+    }
     return createFirebaseRepositories()
   }
 

@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function canReadBusiness(businessId) {
+      return isAuthenticated() &&
+             (isAdmin() ||
+              isOwner(get(/databases/$(database)/documents/businesses/$(businessId)).data.createdBy) ||
+              exists(/databases/$(database)/documents/partners/$(request.auth.uid + '_' + businessId)));
+    }
+
+    function canWriteBusiness(businessId) {
+      return isAuthenticated() &&
+             (isAdmin() ||
+              isOwner(get(/databases/$(database)/documents/businesses/$(businessId)).data.createdBy));
+    }
+
+    // Users collection - users can read/write their own data, admins can read all
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow write: if isAuthenticated() && isOwner(userId);
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Persons collection - authenticated users can read, only admins can write
+    match /persons/{personId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
+      allow create: if isAuthenticated() && isAdmin();
+    }
+
+    // Businesses collection
+    match /businesses/{businessId} {
+      allow read: if canReadBusiness(businessId);
+      allow write: if canWriteBusiness(businessId);
+      allow create: if isAuthenticated();
+    }
+
+    // Partners collection - business owners/admins can manage partners
+    match /partners/{partnerId} {
+      allow read: if canReadBusiness(resource.data.businessId);
+      allow write: if canWriteBusiness(resource.data.businessId);
+      allow create: if isAuthenticated() && canWriteBusiness(request.resource.data.businessId);
+    }
+
+    // Entries collection - business participants can read, owners can write
+    match /entries/{entryId} {
+      allow read: if canReadBusiness(resource.data.businessId);
+      allow write: if canWriteBusiness(resource.data.businessId);
+      allow create: if isAuthenticated() && canWriteBusiness(request.resource.data.businessId);
+    }
+
+    // Audit events - read-only for business participants
+    match /auditEvents/{eventId} {
+      allow read: if canReadBusiness(resource.data.businessId);
+      allow write: if false; // Audit events are append-only
+      allow create: if isAuthenticated() && canWriteBusiness(request.resource.data.businessId);
+    }
+  }
+}
