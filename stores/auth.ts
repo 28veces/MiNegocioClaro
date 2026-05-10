@@ -62,6 +62,8 @@ export const useAuthStore = defineStore('auth', {
         this.accessibleBusinessIds = session.accessibleBusinessIds
         return session
       } catch (error) {
+        // Log error but don't fail silently - just reset state
+        console.debug('Auth session error:', error instanceof Error ? error.message : 'Unknown error')
         this.user = null
         this.accessibleBusinessIds = []
         return null

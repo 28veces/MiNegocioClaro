@@ -35,7 +35,7 @@ import type {
   AppUser,
   UserRole
 } from '~/types/domain'
-import { auth, db } from './config'
+import { initializeFirebase } from './config'
 
 // Helper functions
 const convertTimestamp = (timestamp: Timestamp | Date | string): string => {
@@ -56,11 +56,11 @@ const createTimestamp = (): Timestamp => {
 class FirebaseAuthRepository {
   async login(payload: LoginPayload): Promise<AuthSession> {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, payload.email, payload.password)
+      const userCredential = await signInWithEmailAndPassword(getAuth(), payload.email, payload.password)
       const user = userCredential.user
 
       // Get user data from Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid))
+      const userDoc = await getDoc(doc(getDb(), 'users', user.uid))
       if (!userDoc.exists()) {
         throw new Error('Usuario no encontrado en la base de datos')
       }
@@ -87,7 +87,7 @@ class FirebaseAuthRepository {
 
   async getSession(): Promise<AuthSession | null> {
     return new Promise((resolve) => {
-      const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      const unsubscribe = onAuthStateChanged(getAuth(), async (user) => {
         unsubscribe()
         if (!user) {
           resolve(null)
@@ -95,7 +95,7 @@ class FirebaseAuthRepository {
         }
 
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid))
+          const userDoc = await getDoc(doc(getDb(), 'users', user.uid))
           if (!userDoc.exists()) {
             resolve(null)
             return
@@ -124,7 +124,7 @@ class FirebaseAuthRepository {
 
   async logout(): Promise<void> {
     try {
-      await signOut(auth)
+      await signOut(getAuth())
     } catch (error: any) {
       throw new Error(`Error al cerrar sesión: ${error.message}`)
     }
@@ -136,7 +136,7 @@ class FirebaseAuthRepository {
 
       // Get businesses where user is owner
       const ownedBusinessesQuery = query(
-        collection(db, 'businesses'),
+        collection(getDb(), 'businesses'),
         where('createdBy', '==', userId)
       )
       const ownedBusinessesSnapshot = await getDocs(ownedBusinessesQuery)
@@ -146,7 +146,7 @@ class FirebaseAuthRepository {
 
       // Get businesses where user is partner
       const partnerQuery = query(
-        collection(db, 'partners'),
+        collection(getDb(), 'partners'),
         where('userId', '==', userId)
       )
       const partnerSnapshot = await getDocs(partnerQuery)
@@ -173,7 +173,7 @@ class FirebaseBusinessRepository {
 
       // Get businesses where user is owner
       const ownedBusinessesQuery = query(
-        collection(db, 'businesses'),
+        collection(getDb(), 'businesses'),
         where('createdBy', '==', session.user.id)
       )
       const ownedBusinessesSnapshot = await getDocs(ownedBusinessesQuery)
@@ -192,14 +192,14 @@ class FirebaseBusinessRepository {
 
       // Get businesses where user is partner
       const partnerQuery = query(
-        collection(db, 'partners'),
+        collection(getDb(), 'partners'),
         where('userId', '==', session.user.id)
       )
       const partnerSnapshot = await getDocs(partnerQuery)
       for (const partnerDoc of partnerSnapshot.docs) {
         const partnerData = partnerDoc.data()
         if (partnerData.businessId && !businesses.find(b => b.id === partnerData.businessId)) {
-          const businessDoc = await getDoc(doc(db, 'businesses', partnerData.businessId))
+          const businessDoc = await getDoc(doc(getDb(), 'businesses', partnerData.businessId))
           if (businessDoc.exists()) {
             const data = businessDoc.data()
             businesses.push({
@@ -223,7 +223,7 @@ class FirebaseBusinessRepository {
 
   async getBusinessById(id: string): Promise<Business | null> {
     try {
-      const docRef = doc(db, 'businesses', id)
+      const docRef = doc(getDb(), 'businesses', id)
       const docSnap = await getDoc(docRef)
 
       if (!docSnap.exists()) {
@@ -247,7 +247,7 @@ class FirebaseBusinessRepository {
 
   async createBusiness(input: CreateBusinessInput): Promise<Business> {
     try {
-      const user = auth.currentUser
+      const user = getAuth().currentUser
       if (!user) {
         throw new Error('Usuario no autenticado')
       }
@@ -262,7 +262,7 @@ class FirebaseBusinessRepository {
         createdAt: createTimestamp()
       }
 
-      const docRef = await addDoc(collection(db, 'businesses'), businessData)
+      const docRef = await addDoc(collection(getDb(), 'businesses'), businessData)
 
       // Create initial partners if provided
       if (input.initialPartners && input.initialPartners.length > 0) {
@@ -292,7 +292,7 @@ class FirebaseBusinessRepository {
 
   async updateBusiness(input: UpdateBusinessInput): Promise<Business> {
     try {
-      const docRef = doc(db, 'businesses', input.id)
+      const docRef = doc(getDb(), 'businesses', input.id)
       const updateData = {
         name: input.name,
         kind: input.kind,
@@ -319,7 +319,7 @@ class FirebaseBusinessRepository {
 
   async deleteBusiness(id: string): Promise<void> {
     try {
-      await deleteDoc(doc(db, 'businesses', id))
+      await deleteDoc(doc(getDb(), 'businesses', id))
     } catch (error: any) {
       throw new Error(`Error al eliminar negocio: ${error.message}`)
     }
@@ -328,7 +328,7 @@ class FirebaseBusinessRepository {
   async listPartners(businessId: string): Promise<Partner[]> {
     try {
       const partnersQuery = query(
-        collection(db, 'partners'),
+        collection(getDb(), 'partners'),
         where('businessId', '==', businessId)
       )
       const querySnapshot = await getDocs(partnersQuery)
@@ -363,7 +363,7 @@ class FirebaseBusinessRepository {
         createdAt: createTimestamp()
       }
 
-      const docRef = await addDoc(collection(db, 'partners'), partnerData)
+      const docRef = await addDoc(collection(getDb(), 'partners'), partnerData)
 
       return {
         id: docRef.id,
@@ -380,7 +380,7 @@ class FirebaseBusinessRepository {
 
   async updatePartner(input: UpdatePartnerInput): Promise<Partner> {
     try {
-      const docRef = doc(db, 'partners', input.id)
+      const docRef = doc(getDb(), 'partners', input.id)
       const updateData = {
         businessId: input.businessId,
         personId: input.personId,
@@ -405,7 +405,7 @@ class FirebaseBusinessRepository {
 
   async deletePartner(id: string): Promise<void> {
     try {
-      await deleteDoc(doc(db, 'partners', id))
+      await deleteDoc(doc(getDb(), 'partners', id))
     } catch (error: any) {
       throw new Error(`Error al eliminar socio: ${error.message}`)
     }
@@ -416,7 +416,7 @@ class FirebaseBusinessRepository {
 class FirebasePersonRepository {
   async listPersons(session: AuthSession): Promise<Person[]> {
     try {
-      const querySnapshot = await getDocs(collection(db, 'persons'))
+      const querySnapshot = await getDocs(collection(getDb(), 'persons'))
       const persons: Person[] = []
 
       querySnapshot.forEach((doc) => {
@@ -442,7 +442,7 @@ class FirebasePersonRepository {
 
   async getPersonById(id: string): Promise<Person | null> {
     try {
-      const docRef = doc(db, 'persons', id)
+      const docRef = doc(getDb(), 'persons', id)
       const docSnap = await getDoc(docRef)
 
       if (!docSnap.exists()) {
@@ -478,7 +478,7 @@ class FirebasePersonRepository {
         updatedAt: createTimestamp()
       }
 
-      const docRef = await addDoc(collection(db, 'persons'), personData)
+      const docRef = await addDoc(collection(getDb(), 'persons'), personData)
 
       return {
         id: docRef.id,
@@ -497,7 +497,7 @@ class FirebasePersonRepository {
 
   async updatePerson(input: UpdatePersonInput): Promise<Person> {
     try {
-      const docRef = doc(db, 'persons', input.id)
+      const docRef = doc(getDb(), 'persons', input.id)
       const updateData = {
         firstName: input.firstName,
         lastName: input.lastName,
@@ -526,7 +526,7 @@ class FirebasePersonRepository {
 
   async setPersonArchived(id: string, archived: boolean): Promise<Person> {
     try {
-      const docRef = doc(db, 'persons', id)
+      const docRef = doc(getDb(), 'persons', id)
       const updateData = {
         archivedAt: archived ? createTimestamp() : null,
         updatedAt: createTimestamp()
@@ -559,7 +559,7 @@ class FirebaseFinanceRepository {
   async listEntries(businessId: string): Promise<FinancialEntry[]> {
     try {
       const entriesQuery = query(
-        collection(db, 'entries'),
+        collection(getDb(), 'entries'),
         where('businessId', '==', businessId),
         orderBy('date', 'desc')
       )
@@ -606,7 +606,7 @@ class FirebaseFinanceRepository {
         createdAt: createTimestamp()
       }
 
-      const docRef = await addDoc(collection(db, 'entries'), entryData)
+      const docRef = await addDoc(collection(getDb(), 'entries'), entryData)
 
       return {
         id: docRef.id,
@@ -629,7 +629,7 @@ class FirebaseFinanceRepository {
 
   async updateEntry(input: UpdateEntryInput): Promise<FinancialEntry> {
     try {
-      const docRef = doc(db, 'entries', input.id)
+      const docRef = doc(getDb(), 'entries', input.id)
       const updateData = {
         businessId: input.businessId,
         type: input.type,
@@ -665,7 +665,7 @@ class FirebaseFinanceRepository {
 
   async deleteEntry(id: string): Promise<void> {
     try {
-      await deleteDoc(doc(db, 'entries', id))
+      await deleteDoc(doc(getDb(), 'entries', id))
     } catch (error: any) {
       throw new Error(`Error al eliminar entrada: ${error.message}`)
     }
@@ -676,7 +676,7 @@ class FirebaseFinanceRepository {
 class FirebaseAuditRepository {
   async listEvents(queryParams?: AuditEventQuery): Promise<AuditEvent[]> {
     try {
-      let firestoreCollection = collection(db, 'auditEvents')
+      let firestoreCollection = collection(getDb(), 'auditEvents')
       let firestoreQuery: any = firestoreCollection
 
       if (queryParams?.businessId) {
@@ -719,7 +719,18 @@ class FirebaseAuditRepository {
   }
 }
 
+// Global references updated when Firebase initializes
+let _globalAuth: any = null
+let _globalDb: any = null
+
 export const createFirebaseRepositories = (): RepositoryBundle => {
+  // Initialize Firebase on first use
+  const { auth: initAuth, db: initDb } = initializeFirebase()
+  
+  // Update global references so classes can use them
+  _globalAuth = initAuth
+  _globalDb = initDb
+
   return {
     auth: new FirebaseAuthRepository(),
     businesses: new FirebaseBusinessRepository(),
@@ -728,3 +739,7 @@ export const createFirebaseRepositories = (): RepositoryBundle => {
     audit: new FirebaseAuditRepository()
   }
 }
+
+// Replace all references to auth and db with _globalAuth and _globalDb
+const getAuth = () => _globalAuth
+const getDb = () => _globalDb
