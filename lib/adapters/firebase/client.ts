@@ -68,7 +68,7 @@ class FirebaseAuthRepository {
       const userData = userDoc.data()
       const appUser: AppUser = {
         id: user.uid,
-        name: userData.name || user.displayName || 'Usuario',
+        name: userData.name || user.displayName || user.email || 'Usuario',
         email: userData.email || user.email || '',
         role: userData.role || 'user'
       }
@@ -104,7 +104,7 @@ class FirebaseAuthRepository {
           const userData = userDoc.data()
           const appUser: AppUser = {
             id: user.uid,
-            name: userData.name || user.displayName || 'Usuario',
+            name: userData.name || user.displayName || user.email || 'Usuario',
             email: userData.email || user.email || '',
             role: userData.role || 'user'
           }
@@ -468,14 +468,20 @@ class FirebasePersonRepository {
 
   async createPerson(input: CreatePersonInput): Promise<Person> {
     try {
-      const personData = {
+      const personData: any = {
         firstName: input.firstName,
         lastName: input.lastName,
         documentNumber: input.documentNumber,
-        email: input.email,
-        linkedUserId: input.linkedUserId,
         createdAt: createTimestamp(),
         updatedAt: createTimestamp()
+      }
+
+      // Only include optional fields if they have values
+      if (input.email) {
+        personData.email = input.email
+      }
+      if (input.linkedUserId) {
+        personData.linkedUserId = input.linkedUserId
       }
 
       const docRef = await addDoc(collection(getDb(), 'persons'), personData)
@@ -498,13 +504,19 @@ class FirebasePersonRepository {
   async updatePerson(input: UpdatePersonInput): Promise<Person> {
     try {
       const docRef = doc(getDb(), 'persons', input.id)
-      const updateData = {
+      const updateData: any = {
         firstName: input.firstName,
         lastName: input.lastName,
         documentNumber: input.documentNumber,
-        email: input.email,
-        linkedUserId: input.linkedUserId,
         updatedAt: createTimestamp()
+      }
+
+      // Only include optional fields if they have values
+      if (input.email) {
+        updateData.email = input.email
+      }
+      if (input.linkedUserId) {
+        updateData.linkedUserId = input.linkedUserId
       }
 
       await updateDoc(docRef, updateData)
