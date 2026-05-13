@@ -1170,7 +1170,15 @@ export const createLocalRepositories = (): RepositoryBundle => {
     auth: new LocalAuthAdapter(),
     businesses: new LocalBusinessAdapter(),
     finance: new LocalFinanceAdapter(),
-    persons: new LocalPersonAdapter()
+    persons: new LocalPersonAdapter(),
+    society: {
+      listSocieties: async () => [],
+      getSocietyById: async () => null,
+      createSociety: async () => { throw new Error('Sociedades no están disponibles en modo local.') },
+      updateSociety: async () => { throw new Error('Sociedades no están disponibles en modo local.') },
+      deleteSociety: async () => { throw new Error('Sociedades no están disponibles en modo local.') },
+      findUserByEmail: async () => null
+    }
   }
 
   return repositoryBundle
