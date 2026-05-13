@@ -18,6 +18,7 @@ const navigationItems = computed(() => {
 
   if (authStore.canManagePeople) {
     items.push({ label: 'Personas', to: '/persons' })
+    items.push({ label: 'Sociedades', to: '/societies' })
   }
 
   return items
