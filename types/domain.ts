@@ -112,6 +112,31 @@ export interface PortfolioSummary {
   netProfit: number
 }
 
+export interface Society {
+  id: string
+  name: string
+  description?: string
+  ownerId: string
+  memberIds: string[]
+  businessIds: string[]
+  createdAt: string
+}
+
+export interface CreateSocietyInput {
+  name: string
+  description?: string
+  businessIds?: string[]
+  memberIds?: string[]
+}
+
+export interface UpdateSocietyInput {
+  id: string
+  name: string
+  description?: string
+  businessIds: string[]
+  memberIds: string[]
+}
+
 export interface LoginPayload {
   email: string
   password: string
