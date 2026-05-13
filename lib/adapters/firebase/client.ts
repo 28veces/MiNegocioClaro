@@ -33,7 +33,10 @@ import type {
   AuditEvent,
   AuditEventQuery,
   AppUser,
-  UserRole
+  UserRole,
+  Society,
+  CreateSocietyInput,
+  UpdateSocietyInput
 } from '~/types/domain'
 import { initializeFirebase } from './config'
 
@@ -157,6 +160,23 @@ class FirebaseAuthRepository {
         }
       })
 
+      // Get businesses shared through societies
+      const societiesQuery = query(
+        collection(getDb(), 'societies'),
+        where('memberIds', 'array-contains', userId)
+      )
+      const societiesSnapshot = await getDocs(societiesQuery)
+      societiesSnapshot.forEach((doc) => {
+        const data = doc.data()
+        const societyBusinessIds = Array.isArray(data.businessIds) ? data.businessIds : []
+
+        for (const businessId of societyBusinessIds) {
+          if (businessId && !businessIds.includes(businessId)) {
+            businessIds.push(businessId)
+          }
+        }
+      })
+
       return businessIds
     } catch (error) {
       console.error('Error getting accessible business IDs:', error)
@@ -200,6 +220,25 @@ class FirebaseBusinessRepository {
         const partnerData = partnerDoc.data()
         if (partnerData.businessId && !businesses.find(b => b.id === partnerData.businessId)) {
           const businessDoc = await getDoc(doc(getDb(), 'businesses', partnerData.businessId))
+          if (businessDoc.exists()) {
+            const data = businessDoc.data()
+            businesses.push({
+              id: businessDoc.id,
+              name: data.name,
+              kind: data.kind,
+              location: data.location,
+              description: data.description,
+              currency: data.currency || 'USD',
+              createdAt: convertTimestamp(data.createdAt)
+            })
+          }
+        }
+      }
+
+      // Include businesses available via societies
+      for (const businessId of session.accessibleBusinessIds) {
+        if (!businesses.find((business) => business.id === businessId)) {
+          const businessDoc = await getDoc(doc(getDb(), 'businesses', businessId))
           if (businessDoc.exists()) {
             const data = businessDoc.data()
             businesses.push({
@@ -809,6 +848,170 @@ class FirebaseAuditRepository {
   }
 }
 
+// Society Repository Implementation
+class FirebaseSocietyRepository {
+  async listSocieties(userId: string): Promise<Society[]> {
+    try {
+      const societies: Society[] = []
+
+      const ownedQuery = query(collection(getDb(), 'societies'), where('ownerId', '==', userId))
+      const ownedSnapshot = await getDocs(ownedQuery)
+
+      ownedSnapshot.forEach((doc) => {
+        const data = doc.data()
+        societies.push({
+          id: doc.id,
+          name: data.name,
+          description: data.description,
+          ownerId: data.ownerId,
+          memberIds: data.memberIds ?? [],
+          businessIds: data.businessIds ?? [],
+          createdAt: convertTimestamp(data.createdAt)
+        })
+      })
+
+      const memberQuery = query(collection(getDb(), 'societies'), where('memberIds', 'array-contains', userId))
+      const memberSnapshot = await getDocs(memberQuery)
+
+      memberSnapshot.forEach((doc) => {
+        if (societies.some((society) => society.id === doc.id)) {
+          return
+        }
+
+        const data = doc.data()
+        societies.push({
+          id: doc.id,
+          name: data.name,
+          description: data.description,
+          ownerId: data.ownerId,
+          memberIds: data.memberIds ?? [],
+          businessIds: data.businessIds ?? [],
+          createdAt: convertTimestamp(data.createdAt)
+        })
+      })
+
+      return societies
+    } catch (error: any) {
+      throw new Error(`Error al listar sociedades: ${error.message}`)
+    }
+  }
+
+  async getSocietyById(id: string): Promise<Society | null> {
+    try {
+      const docSnapshot = await getDoc(doc(getDb(), 'societies', id))
+
+      if (!docSnapshot.exists()) {
+        return null
+      }
+
+      const data = docSnapshot.data()
+      return {
+        id: docSnapshot.id,
+        name: data.name,
+        description: data.description,
+        ownerId: data.ownerId,
+        memberIds: data.memberIds ?? [],
+        businessIds: data.businessIds ?? [],
+        createdAt: convertTimestamp(data.createdAt)
+      }
+    } catch (error: any) {
+      throw new Error(`Error al obtener sociedad: ${error.message}`)
+    }
+  }
+
+  async createSociety(input: CreateSocietyInput, ownerId: string): Promise<Society> {
+    try {
+      const societyData: any = {
+        name: input.name,
+        ownerId,
+        memberIds: input.memberIds ?? [],
+        businessIds: input.businessIds ?? [],
+        createdAt: createTimestamp()
+      }
+
+      if (input.description) {
+        societyData.description = input.description
+      }
+
+      const docRef = await addDoc(collection(getDb(), 'societies'), societyData)
+
+      return {
+        id: docRef.id,
+        name: input.name,
+        description: input.description,
+        ownerId,
+        memberIds: input.memberIds ?? [],
+        businessIds: input.businessIds ?? [],
+        createdAt: new Date().toISOString()
+      }
+    } catch (error: any) {
+      throw new Error(`Error al crear sociedad: ${error.message}`)
+    }
+  }
+
+  async updateSociety(input: UpdateSocietyInput): Promise<Society> {
+    try {
+      const docRef = doc(getDb(), 'societies', input.id)
+      const updateData: any = {
+        name: input.name,
+        memberIds: input.memberIds,
+        businessIds: input.businessIds
+      }
+
+      if (input.description) {
+        updateData.description = input.description
+      }
+
+      await updateDoc(docRef, updateData)
+
+      const updated = await this.getSocietyById(input.id)
+      if (!updated) {
+        throw new Error('No se pudo cargar la sociedad actualizada.')
+      }
+
+      return updated
+    } catch (error: any) {
+      throw new Error(`Error al actualizar sociedad: ${error.message}`)
+    }
+  }
+
+  async deleteSociety(id: string): Promise<void> {
+    try {
+      await deleteDoc(doc(getDb(), 'societies', id))
+    } catch (error: any) {
+      throw new Error(`Error al eliminar sociedad: ${error.message}`)
+    }
+  }
+
+  async findUserByEmail(email: string): Promise<AppUser | null> {
+    try {
+      const normalizedEmail = email.trim().toLowerCase()
+      if (!normalizedEmail) {
+        return null
+      }
+
+      const usersQuery = query(collection(getDb(), 'users'), where('email', '==', normalizedEmail))
+      const usersSnapshot = await getDocs(usersQuery)
+
+      if (usersSnapshot.empty) {
+        return null
+      }
+
+      const userDoc = usersSnapshot.docs[0]
+      const userData = userDoc.data()
+
+      return {
+        id: userDoc.id,
+        name: userData.name || userData.email || 'Usuario',
+        email: userData.email || '',
+        role: userData.role || 'user'
+      }
+    } catch (error: any) {
+      throw new Error(`Error al buscar usuario por correo: ${error.message}`)
+    }
+  }
+}
+
 // Global references updated when Firebase initializes
 let _globalAuth: any = null
 let _globalDb: any = null
@@ -826,7 +1029,8 @@ export const createFirebaseRepositories = (): RepositoryBundle => {
     businesses: new FirebaseBusinessRepository(),
     persons: new FirebasePersonRepository(),
     finance: new FirebaseFinanceRepository(),
-    audit: new FirebaseAuditRepository()
+    audit: new FirebaseAuditRepository(),
+    society: new FirebaseSocietyRepository()
   }
 }
 
