@@ -5,6 +5,7 @@ import type { AuthRepository } from '~/lib/repositories/auth.repository'
 import type { BusinessRepository } from '~/lib/repositories/business.repository'
 import type { FinanceRepository } from '~/lib/repositories/finance.repository'
 import type { PersonRepository } from '~/lib/repositories/person.repository'
+import type { SocietyRepository } from './society.repository'
 
 export interface RepositoryBundle {
   audit: AuditRepository
@@ -12,6 +13,7 @@ export interface RepositoryBundle {
   businesses: BusinessRepository
   finance: FinanceRepository
   persons: PersonRepository
+  society: SocietyRepository
 }
 
 export const useRepositories = (): RepositoryBundle => {
