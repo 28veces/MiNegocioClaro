@@ -604,7 +604,7 @@ class FirebaseFinanceRepository {
 
   async createEntry(input: CreateEntryInput): Promise<FinancialEntry> {
     try {
-      const entryData = {
+      const entryData: any = {
         businessId: input.businessId,
         type: input.type,
         category: input.category,
@@ -612,10 +612,16 @@ class FirebaseFinanceRepository {
         note: input.note,
         date: input.date,
         recordedBy: input.recordedBy,
-        assignmentMode: input.assignmentMode,
-        assignedPersonId: input.assignedPersonId,
         assignments: [],
         createdAt: createTimestamp()
+      }
+
+      // Only include optional fields if they have values
+      if (input.assignmentMode) {
+        entryData.assignmentMode = input.assignmentMode
+      }
+      if (input.assignedPersonId) {
+        entryData.assignedPersonId = input.assignedPersonId
       }
 
       const docRef = await addDoc(collection(getDb(), 'entries'), entryData)
@@ -642,16 +648,22 @@ class FirebaseFinanceRepository {
   async updateEntry(input: UpdateEntryInput): Promise<FinancialEntry> {
     try {
       const docRef = doc(getDb(), 'entries', input.id)
-      const updateData = {
+      const updateData: any = {
         businessId: input.businessId,
         type: input.type,
         category: input.category,
         amount: input.amount,
         note: input.note,
         date: input.date,
-        recordedBy: input.recordedBy,
-        assignmentMode: input.assignmentMode,
-        assignedPersonId: input.assignedPersonId
+        recordedBy: input.recordedBy
+      }
+
+      // Only include optional fields if they have values
+      if (input.assignmentMode) {
+        updateData.assignmentMode = input.assignmentMode
+      }
+      if (input.assignedPersonId) {
+        updateData.assignedPersonId = input.assignedPersonId
       }
 
       await updateDoc(docRef, updateData)
