@@ -567,6 +567,25 @@ class FirebasePersonRepository {
 }
 
 // Finance Repository Implementation
+
+// Helper function to build equal assignments
+const buildEqualAssignments = (personIds: string[], amount: number) => {
+  if (!personIds.length) return []
+  
+  const baseAmount = Math.round((amount / personIds.length) * 100) / 100
+  const assignments = personIds.map((personId) => ({ personId, amount: baseAmount }))
+  
+  // Adjust the last assignment for rounding errors
+  const assignedTotal = assignments.reduce((sum, a) => sum + a.amount, 0)
+  const remainder = Math.round((amount - assignedTotal) * 100) / 100
+  
+  if (remainder !== 0 && assignments.length > 0) {
+    assignments[assignments.length - 1].amount += remainder
+  }
+  
+  return assignments
+}
+
 class FirebaseFinanceRepository {
   async listEntries(businessId: string): Promise<FinancialEntry[]> {
     try {
@@ -604,6 +623,27 @@ class FirebaseFinanceRepository {
 
   async createEntry(input: CreateEntryInput): Promise<FinancialEntry> {
     try {
+      // Get partners to calculate assignments if needed
+      let assignments: any[] = []
+      
+      if (input.assignmentMode === 'all') {
+        // Get all partners for this business
+        const partnersQuery = query(
+          collection(getDb(), 'partners'),
+          where('businessId', '==', input.businessId)
+        )
+        const partnersSnapshot = await getDocs(partnersQuery)
+        const partnerPersonIds = partnersSnapshot.docs.map((doc) => doc.data().personId)
+        
+        if (partnerPersonIds.length === 0) {
+          throw new Error('No puedes repartir este movimiento entre todos porque el negocio no tiene socios activos.')
+        }
+        
+        assignments = buildEqualAssignments(partnerPersonIds, input.amount)
+      } else if (input.assignmentMode === 'person' && input.assignedPersonId) {
+        assignments = [{ personId: input.assignedPersonId, amount: input.amount }]
+      }
+
       const entryData: any = {
         businessId: input.businessId,
         type: input.type,
@@ -612,7 +652,6 @@ class FirebaseFinanceRepository {
         note: input.note,
         date: input.date,
         recordedBy: input.recordedBy,
-        assignments: [],
         createdAt: createTimestamp()
       }
 
@@ -622,6 +661,9 @@ class FirebaseFinanceRepository {
       }
       if (input.assignedPersonId) {
         entryData.assignedPersonId = input.assignedPersonId
+      }
+      if (assignments.length > 0) {
+        entryData.assignments = assignments
       }
 
       const docRef = await addDoc(collection(getDb(), 'entries'), entryData)
@@ -637,7 +679,7 @@ class FirebaseFinanceRepository {
         recordedBy: input.recordedBy,
         assignmentMode: input.assignmentMode,
         assignedPersonId: input.assignedPersonId,
-        assignments: [],
+        assignments,
         createdAt: new Date().toISOString()
       }
     } catch (error: any) {
@@ -647,6 +689,27 @@ class FirebaseFinanceRepository {
 
   async updateEntry(input: UpdateEntryInput): Promise<FinancialEntry> {
     try {
+      // Get partners to calculate assignments if needed
+      let assignments: any[] = []
+      
+      if (input.assignmentMode === 'all') {
+        // Get all partners for this business
+        const partnersQuery = query(
+          collection(getDb(), 'partners'),
+          where('businessId', '==', input.businessId)
+        )
+        const partnersSnapshot = await getDocs(partnersQuery)
+        const partnerPersonIds = partnersSnapshot.docs.map((doc) => doc.data().personId)
+        
+        if (partnerPersonIds.length === 0) {
+          throw new Error('No puedes repartir este movimiento entre todos porque el negocio no tiene socios activos.')
+        }
+        
+        assignments = buildEqualAssignments(partnerPersonIds, input.amount)
+      } else if (input.assignmentMode === 'person' && input.assignedPersonId) {
+        assignments = [{ personId: input.assignedPersonId, amount: input.amount }]
+      }
+
       const docRef = doc(getDb(), 'entries', input.id)
       const updateData: any = {
         businessId: input.businessId,
@@ -665,6 +728,9 @@ class FirebaseFinanceRepository {
       if (input.assignedPersonId) {
         updateData.assignedPersonId = input.assignedPersonId
       }
+      if (assignments.length > 0) {
+        updateData.assignments = assignments
+      }
 
       await updateDoc(docRef, updateData)
 
@@ -679,7 +745,7 @@ class FirebaseFinanceRepository {
         recordedBy: input.recordedBy,
         assignmentMode: input.assignmentMode,
         assignedPersonId: input.assignedPersonId,
-        assignments: [], // Will be fetched if needed
+        assignments,
         createdAt: '' // Will be fetched if needed
       }
     } catch (error: any) {
