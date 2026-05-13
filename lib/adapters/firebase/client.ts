@@ -55,6 +55,10 @@ const createTimestamp = (): Timestamp => {
   return Timestamp.now()
 }
 
+const isPermissionDeniedError = (error: any) => {
+  return error?.code === 'permission-denied' || String(error?.message ?? '').includes('Missing or insufficient permissions')
+}
+
 // Auth Repository Implementation
 class FirebaseAuthRepository {
   async login(payload: LoginPayload): Promise<AuthSession> {
@@ -161,21 +165,27 @@ class FirebaseAuthRepository {
       })
 
       // Get businesses shared through societies
-      const societiesQuery = query(
-        collection(getDb(), 'societies'),
-        where('memberIds', 'array-contains', userId)
-      )
-      const societiesSnapshot = await getDocs(societiesQuery)
-      societiesSnapshot.forEach((doc) => {
-        const data = doc.data()
-        const societyBusinessIds = Array.isArray(data.businessIds) ? data.businessIds : []
+      try {
+        const societiesQuery = query(
+          collection(getDb(), 'societies'),
+          where('memberIds', 'array-contains', userId)
+        )
+        const societiesSnapshot = await getDocs(societiesQuery)
+        societiesSnapshot.forEach((doc) => {
+          const data = doc.data()
+          const societyBusinessIds = Array.isArray(data.businessIds) ? data.businessIds : []
 
-        for (const businessId of societyBusinessIds) {
-          if (businessId && !businessIds.includes(businessId)) {
-            businessIds.push(businessId)
+          for (const businessId of societyBusinessIds) {
+            if (businessId && !businessIds.includes(businessId)) {
+              businessIds.push(businessId)
+            }
           }
+        })
+      } catch (error) {
+        if (!isPermissionDeniedError(error)) {
+          throw error
         }
-      })
+      }
 
       return businessIds
     } catch (error) {
@@ -892,6 +902,9 @@ class FirebaseSocietyRepository {
 
       return societies
     } catch (error: any) {
+      if (isPermissionDeniedError(error)) {
+        return []
+      }
       throw new Error(`Error al listar sociedades: ${error.message}`)
     }
   }
@@ -945,6 +958,9 @@ class FirebaseSocietyRepository {
         createdAt: new Date().toISOString()
       }
     } catch (error: any) {
+      if (isPermissionDeniedError(error)) {
+        throw new Error('No tienes permisos para crear sociedades. Revisa las reglas de Firestore para la colección societies.')
+      }
       throw new Error(`Error al crear sociedad: ${error.message}`)
     }
   }
@@ -971,6 +987,9 @@ class FirebaseSocietyRepository {
 
       return updated
     } catch (error: any) {
+      if (isPermissionDeniedError(error)) {
+        throw new Error('No tienes permisos para editar sociedades. Revisa las reglas de Firestore para la colección societies.')
+      }
       throw new Error(`Error al actualizar sociedad: ${error.message}`)
     }
   }
@@ -979,6 +998,9 @@ class FirebaseSocietyRepository {
     try {
       await deleteDoc(doc(getDb(), 'societies', id))
     } catch (error: any) {
+      if (isPermissionDeniedError(error)) {
+        throw new Error('No tienes permisos para eliminar sociedades. Revisa las reglas de Firestore para la colección societies.')
+      }
       throw new Error(`Error al eliminar sociedad: ${error.message}`)
     }
   }
@@ -1007,6 +1029,9 @@ class FirebaseSocietyRepository {
         role: userData.role || 'user'
       }
     } catch (error: any) {
+      if (isPermissionDeniedError(error)) {
+        throw new Error('No tienes permisos para consultar usuarios por correo. Revisa las reglas de Firestore de la colección users.')
+      }
       throw new Error(`Error al buscar usuario por correo: ${error.message}`)
     }
   }
