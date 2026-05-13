@@ -322,7 +322,7 @@ const removeBusiness = async () => {
     </article>
 
     <div class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-      <article class="surface-card rounded-[2rem] px-6 py-7 sm:px-8">
+      <article class="surface-card rounded-[2rem] px-6 py-7 sm:px-8 bg-gradient-to-br from-sky-500/5 to-cyan-500/5 border border-sky-500/10">
         <div class="flex items-center justify-between gap-4">
           <div>
             <p class="text-xs uppercase tracking-[0.3em] text-stone-400">Actividad</p>
